@@ -9,7 +9,8 @@
             <xpath expr="//field[@name='ref']" position="after">
                 <field name="earsiv_pdf" filename="earsiv_pdf_name"
                        widget="binary"
-                       string="E-Arsiv PDF"/>
+                       string="E-Arsiv PDF"
+                       readonly="0"/>
                 <field name="earsiv_pdf_name" invisible="1"/>
             </xpath>
             <!-- Add download button in the button box -->

@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- Add E-Arsiv download button on portal invoice page -->
     <template id="portal_invoice_earsiv_button"
               inherit_id="account.portal_invoice_page"
               name="E-Arsiv PDF Download Button">
-        <xpath expr="//a[@id='print_invoice_report']" position="after">
+        <xpath expr="//div[hasclass('o_download_pdf')]" position="inside">
             <t t-if="invoice.earsiv_pdf">
-                <a class="btn btn-primary btn-block mb8"
+                <a class="btn btn-primary o_download_btn flex-grow-1"
                    t-attf-href="/my/invoices/#{invoice.id}/earsiv"
-                   title="E-Arsiv Fatura Indir">
-                    <i class="fa fa-file-pdf-o"/> E-Arsiv Fatura Indir
+                   title="E-Arsiv Fatura Indir" role="button">
+                    <i class="fa fa-file-pdf-o"/> E-Arsiv Fatura
                 </a>
             </t>
         </xpath>
