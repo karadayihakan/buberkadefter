@@ -25,7 +25,7 @@
             <xpath expr="//field[@name='ref']" position="after">
                 <field name="earsiv_pdf" filename="earsiv_pdf_name"
                        widget="binary" string="E-Arsiv PDF" readonly="0"/>
-                <field name="earsiv_pdf_name" invisible="1"/>
+                <field name="earsiv_pdf_name" invisible="0" readonly="1" string="PDF Dosya Adi"/>
                 <field name="gib_uuid" readonly="1"
                        invisible="not gib_uuid"/>
                 <field name="gib_status" readonly="1"
