@@ -26,6 +26,12 @@ class AccountMove(models.Model):
         'ir.attachment', string='GIB e-Arsiv PDF',
         readonly=True, copy=False,
     )
+    earsiv_pdf = fields.Binary(
+        string='E-Arsiv PDF', attachment=True, readonly=False,
+        help='Manuel olarak yuklenen e-Arsiv PDF',
+    )
+    earsiv_pdf_name = fields.Char(string='E-Arsiv PDF Dosya Adi', readonly=False)
+    has_any_pdf = fields.Boolean(compute='_compute_has_any_pdf')
     gib_can_send = fields.Boolean(
         compute='_compute_gib_can_send',
     )
@@ -38,6 +44,11 @@ class AccountMove(models.Model):
                 and move.move_type in ('out_invoice', 'out_refund')
                 and move.gib_status in ('draft', 'error')
             )
+
+    @api.depends('gib_pdf_id', 'earsiv_pdf')
+    def _compute_has_any_pdf(self):
+        for move in self:
+            move.has_any_pdf = bool(move.gib_pdf_id or move.earsiv_pdf)
 
     def _gib_log(self, message):
         """Chatter'a GIB mesaji yaz."""

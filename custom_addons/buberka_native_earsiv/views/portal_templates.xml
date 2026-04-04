@@ -10,7 +10,7 @@
                    title="Proforma Indir" role="button">
                     <i class="fa fa-download"/> Proforma Indir
                 </a>
-                <t t-if="invoice.gib_pdf_id">
+                <t t-if="invoice.gib_pdf_id or invoice.earsiv_pdf">
                     <a class="btn btn-primary w-100"
                        t-attf-href="/my/invoices/#{invoice.id}/earsiv"
                        title="Fatura Indir" role="button">
