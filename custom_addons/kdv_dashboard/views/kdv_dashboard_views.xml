@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Client Action for KDV Dashboard -->
+    <record id="action_kdv_dashboard" model="ir.actions.client">
+        <field name="name">KDV Özeti</field>
+        <field name="tag">kdv_dashboard</field>
+    </record>
+
+    <!-- Menu item under Invoicing -->
+    <menuitem id="menu_kdv_dashboard"
+              name="KDV Özeti"
+              action="action_kdv_dashboard"
+              parent="account.menu_finance"
+              sequence="5"/>
+</odoo>

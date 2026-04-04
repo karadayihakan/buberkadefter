@@ -1,0 +1,9 @@
+*.pem
+.env
+.DS_Store
+node_modules/
+.kiro/
+LOKAL_README.md
+OCA_REHBER.md
+__pycache__/
+*.pyc

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="kdv_dashboard.KDVDashboard">
+        <div class="kdv-dashboard o_action">
+            <div class="kdv-header">
+                <h2><i class="fa fa-calculator me-2"/>KDV Ozeti</h2>
+            </div>
+
+            <div t-if="state.loading" class="kdv-loading">
+                <i class="fa fa-spinner fa-spin fa-2x"/>
+                <span>Yukleniyor...</span>
+            </div>
+
+            <div t-elif="state.data" class="kdv-content">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6" t-if="quarterly">
+                        <div class="kdv-summary-card">
+                            <div class="kdv-summary-title">
+                                <i class="fa fa-calendar-o me-1"/>
+                                Ceyrek: <t t-esc="periodLabels.quarter"/>
+                            </div>
+                            <div class="row">
+                                <div class="col-4 text-center">
+                                    <div class="kdv-mini-label">Hesaplanan</div>
+                                    <div class="kdv-mini-amount text-success" t-esc="formatCurrency(quarterly.sales_tax)"/>
+                                </div>
+                                <div class="col-4 text-center">
+                                    <div class="kdv-mini-label">Indirilecek</div>
+                                    <div class="kdv-mini-amount text-warning" t-esc="formatCurrency(quarterly.purchase_tax)"/>
+                                </div>
+                                <div class="col-4 text-center">
+                                    <div class="kdv-mini-label">Odenecek</div>
+                                    <div t-att-class="netCardClass(quarterly.net_kdv)" t-esc="formatCurrency(quarterly.net_kdv)"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6" t-if="yearly">
+                        <div class="kdv-summary-card">
+                            <div class="kdv-summary-title">
+                                <i class="fa fa-calendar me-1"/>
+                                Yil: <t t-esc="periodLabels.year"/>
+                            </div>
+                            <div class="row">
+                                <div class="col-4 text-center">
+                                    <div class="kdv-mini-label">Hesaplanan</div>
+                                    <div class="kdv-mini-amount text-success" t-esc="formatCurrency(yearly.sales_tax)"/>
+                                </div>
+                                <div class="col-4 text-center">
+                                    <div class="kdv-mini-label">Indirilecek</div>
+                                    <div class="kdv-mini-amount text-warning" t-esc="formatCurrency(yearly.purchase_tax)"/>
+                                </div>
+                                <div class="col-4 text-center">
+                                    <div class="kdv-mini-label">Odenecek</div>
+                                    <div t-att-class="netCardClass(yearly.net_kdv)" t-esc="formatCurrency(yearly.net_kdv)"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kdv-table-card">
+                    <h5 class="mb-3"><i class="fa fa-table me-2"/>Ay Bazli KDV Tablosu</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Ay</th>
+                                    <th class="text-end">Satis Matrahi</th>
+                                    <th class="text-end">Hesaplanan KDV</th>
+                                    <th class="text-end">Alis Matrahi</th>
+                                    <th class="text-end">Indirilecek KDV</th>
+                                    <th class="text-end">Odenecek KDV</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="monthlyData" t-as="m" t-key="m.month">
+                                    <tr t-att-class="rowClass(m)">
+                                        <td>
+                                            <t t-esc="m.month_label"/>
+                                            <span t-if="m.is_current" class="badge bg-primary ms-1">Su an</span>
+                                        </td>
+                                        <td class="text-end" t-esc="formatCurrency(m.sales_untaxed)"/>
+                                        <td class="text-end text-success" t-esc="formatCurrency(m.sales_tax)"/>
+                                        <td class="text-end" t-esc="formatCurrency(m.purchase_untaxed)"/>
+                                        <td class="text-end text-warning" t-esc="formatCurrency(m.purchase_tax)"/>
+                                        <td t-att-class="netCellClass(m.net_kdv)" t-esc="formatCurrency(m.net_kdv)"/>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div t-else="" class="kdv-empty">
+                <i class="fa fa-info-circle fa-2x"/>
+                <p>Fatura verisi bulunamadi.</p>
+            </div>
+        </div>
+    </t>
+</templates>

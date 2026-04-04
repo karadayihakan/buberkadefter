@@ -1,0 +1,62 @@
+.kdv-dashboard {
+    padding: 24px;
+    background: #f8f9fa;
+    min-height: 100%;
+}
+.kdv-header {
+    margin-bottom: 20px;
+}
+.kdv-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+}
+.kdv-summary-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    height: 100%;
+}
+.kdv-summary-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+.kdv-mini-label {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 4px;
+}
+.kdv-mini-amount {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+.kdv-table-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.kdv-table-card h5 {
+    color: #333;
+    font-weight: 600;
+}
+.kdv-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    color: #999;
+    gap: 12px;
+}
+.kdv-empty {
+    text-align: center;
+    padding: 60px;
+    color: #999;
+}
