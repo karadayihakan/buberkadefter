@@ -35,11 +35,11 @@ class AccountMove(models.Model):
             move.gib_can_send = (
                 move.state == 'posted'
                 and move.move_type in ('out_invoice', 'out_refund')
-                and move.gib_status == 'draft'
+                and move.gib_status in ('draft', 'error')
             )
 
     def action_send_to_gib(self):
-        """GIB e-Arsiv portalina fatura gonder."""
+        """GIB e-Arsiv portalina fatura gonder. Ekrani kilitlemez."""
         self.ensure_one()
         if not self.gib_can_send:
             raise UserError('Bu fatura GIB portalina gonderilemez.')
@@ -48,51 +48,83 @@ class AccountMove(models.Model):
         if not company.gib_user or not company.gib_password:
             raise UserError(
                 'GIB kullanici bilgileri tanimlanmamis. '
-                'Ayarlar > Sirketler > GIB Kullanici Kodu ve Sifre alanlari doldurulmali.'
+                'Ayarlar > Sirketler > GIB Kullanici Kodu ve Sifre doldurulmali.'
             )
 
-        try:
-            from ..services.gib_client import GIBClient
-            client = GIBClient(company.gib_user, company.gib_password)
-            client.login()
+        from ..services.gib_client import GIBClient
 
-            invoice_data = client.map_odoo_invoice(self)
-            uuid = client.send_invoice(invoice_data)
+        client = GIBClient(company.gib_user, company.gib_password)
 
+        # Login
+        login_result = client.login()
+        if not login_result.success:
             self.write({
-                'gib_uuid': uuid,
+                'gib_status': 'error',
+                'gib_error_message': login_result.error_msg,
+            })
+            self.message_post(
+                body='<b>GIB Giris Hatasi:</b> %s' % login_result.error_msg,
+                message_type='comment',
+                subtype_xmlid='mail.mt_note',
+            )
+            return  # Ekrani kilitleme, sadece chatter'a yaz
+
+        # Map and send
+        try:
+            invoice_data = client.map_odoo_invoice(self)
+        except Exception as e:
+            msg = 'Fatura verisi hazirlama hatasi: %s' % e
+            self.write({
+                'gib_status': 'error',
+                'gib_error_message': msg,
+            })
+            self.message_post(
+                body='<b>GIB Veri Hatasi:</b> %s' % msg,
+                message_type='comment',
+                subtype_xmlid='mail.mt_note',
+            )
+            return
+
+        send_result = client.send_invoice(invoice_data)
+
+        if send_result.success:
+            self.write({
+                'gib_uuid': send_result.uuid,
                 'gib_status': 'sent',
                 'gib_error_message': False,
             })
-
-            # Download and attach PDF
-            try:
-                pdf_data = client.download_pdf(uuid)
-                if pdf_data:
-                    attachment = self.env['ir.attachment'].create({
-                        'name': 'e-arsiv-%s.pdf' % self.name.replace('/', '-'),
-                        'type': 'binary',
-                        'datas': base64.b64encode(pdf_data),
-                        'res_model': 'account.move',
-                        'res_id': self.id,
-                        'mimetype': 'application/pdf',
-                    })
-                    self.gib_pdf_id = attachment.id
-            except Exception as pdf_err:
-                _logger.warning('GIB PDF indirilemedi: %s', pdf_err)
-
-        except ImportError:
-            raise UserError(
-                'fatura kutuphanesi yuklu degil. '
-                'Sunucuda: pip install fatura komutunu calistirin.'
+            self.message_post(
+                body='<b>GIB e-Arsiv fatura basariyla gonderildi.</b><br/>'
+                     'ETTN: %s' % send_result.uuid,
+                message_type='comment',
+                subtype_xmlid='mail.mt_note',
             )
-        except Exception as e:
+
+            # PDF varsa ekle
+            if send_result.pdf_data:
+                attachment = self.env['ir.attachment'].create({
+                    'name': 'e-arsiv-%s.pdf' % self.name.replace('/', '-'),
+                    'type': 'binary',
+                    'datas': base64.b64encode(send_result.pdf_data),
+                    'res_model': 'account.move',
+                    'res_id': self.id,
+                    'mimetype': 'application/pdf',
+                })
+                self.gib_pdf_id = attachment.id
+        else:
             self.write({
                 'gib_status': 'error',
-                'gib_error_message': str(e),
+                'gib_error_message': send_result.error_msg,
             })
-            _logger.error('GIB gonderim hatasi: %s', e)
-            raise UserError('GIB gonderim hatasi: %s' % e)
+            self.message_post(
+                body='<b>GIB Gonderim Hatasi:</b> %s' % send_result.error_msg,
+                message_type='comment',
+                subtype_xmlid='mail.mt_note',
+            )
+            # Ekrani kilitleme! Hata chatter'da gorunur.
+
+        # Logout
+        client.logout()
 
     def action_download_gib_pdf(self):
         """GIB PDF indir."""
