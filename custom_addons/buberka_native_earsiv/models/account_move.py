@@ -1,5 +1,6 @@
 import base64
 import logging
+from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -38,8 +39,16 @@ class AccountMove(models.Model):
                 and move.gib_status in ('draft', 'error')
             )
 
+    def _gib_log(self, message):
+        """Chatter'a GIB mesaji yaz."""
+        self.message_post(
+            body=Markup(message),
+            message_type='notification',
+            subtype_xmlid='mail.mt_note',
+        )
+
     def action_send_to_gib(self):
-        """GIB e-Arsiv portalina fatura gonder. Ekrani kilitlemez."""
+        """GIB e-Arsiv portalina fatura gonder."""
         self.ensure_one()
         if not self.gib_can_send:
             raise UserError('Bu fatura GIB portalina gonderilemez.')
@@ -52,37 +61,20 @@ class AccountMove(models.Model):
             )
 
         from ..services.gib_client import GIBClient
-
         client = GIBClient(company.gib_user, company.gib_password)
 
-        # Login
         login_result = client.login()
         if not login_result.success:
-            self.write({
-                'gib_status': 'error',
-                'gib_error_message': login_result.error_msg,
-            })
-            self.message_post(
-                body='<b>GIB Giris Hatasi:</b> %s' % login_result.error_msg,
-                message_type='comment',
-                subtype_xmlid='mail.mt_note',
-            )
-            return  # Ekrani kilitleme, sadece chatter'a yaz
+            self.write({'gib_status': 'error', 'gib_error_message': login_result.error_msg})
+            self._gib_log('<b>GIB Giris Hatasi</b><br/>%s' % login_result.error_msg)
+            return
 
-        # Map and send
         try:
             invoice_data = client.map_odoo_invoice(self)
         except Exception as e:
-            msg = 'Fatura verisi hazirlama hatasi: %s' % e
-            self.write({
-                'gib_status': 'error',
-                'gib_error_message': msg,
-            })
-            self.message_post(
-                body='<b>GIB Veri Hatasi:</b> %s' % msg,
-                message_type='comment',
-                subtype_xmlid='mail.mt_note',
-            )
+            msg = str(e)
+            self.write({'gib_status': 'error', 'gib_error_message': msg})
+            self._gib_log('<b>GIB Veri Hatasi</b><br/>%s' % msg)
             return
 
         send_result = client.send_invoice(invoice_data)
@@ -93,14 +85,9 @@ class AccountMove(models.Model):
                 'gib_status': 'sent',
                 'gib_error_message': False,
             })
-            self.message_post(
-                body='<b>GIB e-Arsiv fatura basariyla gonderildi.</b><br/>'
-                     'ETTN: %s' % send_result.uuid,
-                message_type='comment',
-                subtype_xmlid='mail.mt_note',
+            self._gib_log(
+                '<b>GIB e-Arsiv fatura gonderildi</b><br/>ETTN: %s' % send_result.uuid
             )
-
-            # PDF varsa ekle
             if send_result.pdf_data:
                 attachment = self.env['ir.attachment'].create({
                     'name': 'e-arsiv-%s.pdf' % self.name.replace('/', '-'),
@@ -112,18 +99,9 @@ class AccountMove(models.Model):
                 })
                 self.gib_pdf_id = attachment.id
         else:
-            self.write({
-                'gib_status': 'error',
-                'gib_error_message': send_result.error_msg,
-            })
-            self.message_post(
-                body='<b>GIB Gonderim Hatasi:</b> %s' % send_result.error_msg,
-                message_type='comment',
-                subtype_xmlid='mail.mt_note',
-            )
-            # Ekrani kilitleme! Hata chatter'da gorunur.
+            self.write({'gib_status': 'error', 'gib_error_message': send_result.error_msg})
+            self._gib_log('<b>GIB Gonderim Hatasi</b><br/>%s' % send_result.error_msg)
 
-        # Logout
         client.logout()
 
     def action_download_gib_pdf(self):
@@ -141,7 +119,7 @@ class AccountMove(models.Model):
         """GIB portalindan faturalari cekip ref alaniyla eslestir."""
         self.ensure_one()
         if not self.ref:
-            raise UserError('Musteri Referansi (ref) alani bos. GIB fatura numarasi girilmeli.')
+            raise UserError('Musteri Referansi bos. GIB fatura numarasi girilmeli.')
         if self.gib_status == 'sent':
             raise UserError('Bu fatura zaten GIB ile eslestirilmis.')
 
@@ -150,78 +128,55 @@ class AccountMove(models.Model):
             raise UserError('GIB kullanici bilgileri tanimlanmamis.')
 
         from ..services.gib_client import GIBClient
-        import base64
+        from datetime import timedelta
 
         client = GIBClient(company.gib_user, company.gib_password)
         login_result = client.login()
         if not login_result.success:
-            self.message_post(
-                body='<b>GIB Giris Hatasi:</b> %s' % login_result.error_msg,
-                message_type='comment', subtype_xmlid='mail.mt_note',
-            )
+            self._gib_log('<b>GIB Giris Hatasi</b><br/>%s' % login_result.error_msg)
             return
 
-        # Son 1 yil icinde ara
-        from datetime import timedelta
         end_date = fields.Date.today()
         start_date = end_date - timedelta(days=365)
-
         fetch_result = client.fetch_invoices(start_date, end_date)
+
         if not fetch_result.success:
-            self.message_post(
-                body='<b>GIB Fatura Listesi Hatasi:</b> %s' % fetch_result.error_msg,
-                message_type='comment', subtype_xmlid='mail.mt_note',
-            )
+            self._gib_log('<b>GIB Fatura Listesi Hatasi</b><br/>%s' % fetch_result.error_msg)
             client.logout()
             return
 
-        gib_invoices = fetch_result.uuid  # list of dicts
+        gib_invoices = fetch_result.uuid
         if not gib_invoices:
-            self.message_post(
-                body='GIB portalinda son 1 yilda fatura bulunamadi.',
-                message_type='comment', subtype_xmlid='mail.mt_note',
-            )
+            self._gib_log('GIB portalinda son 1 yilda fatura bulunamadi.')
             client.logout()
             return
 
-        # ref alanindaki GIB numarasiyla eslestir
         ref_clean = (self.ref or '').strip().upper()
         matched = None
         for gib_inv in gib_invoices:
-            gib_no = ''
-            if isinstance(gib_inv, dict):
-                gib_no = (
-                    gib_inv.get('belgeNumarasi', '')
-                    or gib_inv.get('faturaNo', '')
-                    or gib_inv.get('ettn', '')
-                    or ''
-                ).strip().upper()
-                gib_ettn = (gib_inv.get('ettn', '') or '').strip()
-            else:
+            if not isinstance(gib_inv, dict):
                 continue
-
+            gib_no = (
+                gib_inv.get('belgeNumarasi', '')
+                or gib_inv.get('faturaNo', '')
+                or gib_inv.get('ettn', '')
+                or ''
+            ).strip().upper()
             if ref_clean and (ref_clean in gib_no or gib_no in ref_clean):
                 matched = gib_inv
                 break
 
         if not matched:
-            self.message_post(
-                body='GIB portalinda "%s" referansiyla eslesen fatura bulunamadi. '
-                     '%d fatura kontrol edildi.' % (self.ref, len(gib_invoices)),
-                message_type='comment', subtype_xmlid='mail.mt_note',
+            self._gib_log(
+                '"%s" referansiyla eslesen fatura bulunamadi. %d fatura kontrol edildi.'
+                % (self.ref, len(gib_invoices))
             )
             client.logout()
             return
 
-        # Eslesti! UUID al
         ettn = (matched.get('ettn', '') or '').strip()
-        self.write({
-            'gib_uuid': ettn,
-            'gib_status': 'sent',
-            'gib_error_message': False,
-        })
+        self.write({'gib_uuid': ettn, 'gib_status': 'sent', 'gib_error_message': False})
 
-        # PDF indir
         if ettn:
             pdf_data = client.download_html(ettn)
             if pdf_data:
@@ -235,16 +190,14 @@ class AccountMove(models.Model):
                 })
                 self.gib_pdf_id = attachment.id
 
-        self.message_post(
-            body='<b>GIB Eslestirme Basarili!</b><br/>'
-                 'ETTN: %s<br/>GIB Fatura No: %s' % (
-                     ettn, matched.get('belgeNumarasi', '')),
-            message_type='comment', subtype_xmlid='mail.mt_note',
+        self._gib_log(
+            '<b>GIB Eslestirme Basarili</b><br/>'
+            'ETTN: %s<br/>GIB Fatura No: %s'
+            % (ettn, matched.get('belgeNumarasi', ''))
         )
         client.logout()
 
     def _get_report_base_filename(self):
-        """Eger GIB PDF varsa dosya adini override et."""
         if self.gib_pdf_id:
             return 'e-arsiv-%s' % self.name.replace('/', '-')
         return super()._get_report_base_filename()
