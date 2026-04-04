@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Add E-Arsiv download button on portal invoice page -->
+    <template id="portal_invoice_earsiv_button"
+              inherit_id="account.portal_invoice_page"
+              name="E-Arsiv PDF Download Button">
+        <xpath expr="//a[@id='print_invoice_report']" position="after">
+            <t t-if="invoice.earsiv_pdf">
+                <a class="btn btn-primary btn-block mb8"
+                   t-attf-href="/my/invoices/#{invoice.id}/earsiv"
+                   title="E-Arsiv Fatura Indir">
+                    <i class="fa fa-file-pdf-o"/> E-Arsiv Fatura Indir
+                </a>
+            </t>
+        </xpath>
+    </template>
+</odoo>
