@@ -61,6 +61,8 @@
 
                 <div class="kdv-table-card">
                     <h5 class="mb-3"><i class="fa fa-table me-2"/>Ay Bazli KDV Tablosu</h5>
+                    
+                    <!-- Desktop table -->
                     <div class="table-responsive">
                         <table class="table table-hover table-sm">
                             <thead class="table-light">
@@ -89,6 +91,37 @@
                                 </t>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Mobile cards -->
+                    <div class="kdv-mobile-cards">
+                        <t t-foreach="monthlyData" t-as="m" t-key="m.month + _mobile">
+                            <div t-att-class="monthCardClass(m)">
+                                <div class="kdv-month-card-header">
+                                    <span>
+                                        <t t-esc="m.month_label"/>
+                                        <span t-if="m.is_current" class="badge bg-primary ms-1">Su an</span>
+                                    </span>
+                                    <span t-att-class="netCellClass(m.net_kdv)" t-esc="formatCurrency(m.net_kdv)"/>
+                                </div>
+                                <div class="kdv-month-card-row">
+                                    <span class="label">Satis Matrahi</span>
+                                    <span t-esc="formatCurrency(m.sales_untaxed)"/>
+                                </div>
+                                <div class="kdv-month-card-row">
+                                    <span class="label">Hesaplanan KDV</span>
+                                    <span class="text-success" t-esc="formatCurrency(m.sales_tax)"/>
+                                </div>
+                                <div class="kdv-month-card-row">
+                                    <span class="label">Alis Matrahi</span>
+                                    <span t-esc="formatCurrency(m.purchase_untaxed)"/>
+                                </div>
+                                <div class="kdv-month-card-row">
+                                    <span class="label">Indirilecek KDV</span>
+                                    <span class="text-warning" t-esc="formatCurrency(m.purchase_tax)"/>
+                                </div>
+                            </div>
+                        </t>
                     </div>
                 </div>
             </div>

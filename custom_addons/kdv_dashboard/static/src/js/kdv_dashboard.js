@@ -2,7 +2,6 @@
 
 import { registry } from "@web/core/registry";
 import { Component, onWillStart, useState } from "@odoo/owl";
-import { useService } from "@web/core/utils/hooks";
 import { rpc } from "@web/core/network/rpc";
 
 class KDVDashboard extends Component {
@@ -72,6 +71,12 @@ class KDVDashboard extends Component {
         if (m.is_current) return "table-active fw-bold";
         if (m.sales_tax === 0 && m.purchase_tax === 0) return "text-muted";
         return "";
+    }
+
+    monthCardClass(m) {
+        if (m.is_current) return "kdv-month-card active";
+        if (m.sales_tax === 0 && m.purchase_tax === 0) return "kdv-month-card empty";
+        return "kdv-month-card";
     }
 }
 

@@ -1,0 +1,50 @@
+@media (max-width: 767px) {
+    /* Navbar daha yuksek */
+    .o_main_navbar {
+        min-height: 52px !important;
+        padding: 4px 8px !important;
+    }
+    /* Navbar ikonlari ve yazilari buyut */
+    .o_main_navbar .o_menu_toggle,
+    .o_main_navbar .o_menu_brand,
+    .o_main_navbar .o_menu_systray .dropdown-toggle {
+        font-size: 1.1rem !important;
+        padding: 8px 12px !important;
+        min-height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    /* Hamburger menu ikonu buyut */
+    .o_main_navbar .o_menu_toggle i {
+        font-size: 1.4rem !important;
+    }
+    /* Systray ikonlari buyut */
+    .o_main_navbar .o_menu_systray .dropdown-toggle i,
+    .o_main_navbar .o_menu_systray .o_MessagingMenu_icon,
+    .o_main_navbar .o_menu_systray i {
+        font-size: 1.2rem !important;
+    }
+    /* Navbar butonlari min dokunma alani */
+    .o_main_navbar a,
+    .o_main_navbar button {
+        min-height: 44px !important;
+        min-width: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    /* Kontrol paneli butonlari */
+    .o_control_panel .btn {
+        min-height: 44px !important;
+        min-width: 44px !important;
+        padding: 8px 12px !important;
+    }
+    /* Liste satirlari daha genis dokunma alani */
+    .o_list_view .o_data_row td {
+        padding: 10px 8px !important;
+    }
+    /* Kanban kartlari */
+    .o_kanban_record {
+        padding: 12px !important;
+    }
+}

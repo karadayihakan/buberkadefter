@@ -60,3 +60,67 @@
     padding: 60px;
     color: #999;
 }
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+    .kdv-dashboard {
+        padding: 12px;
+    }
+    .kdv-header h2 {
+        font-size: 1.2rem;
+    }
+    .kdv-summary-card {
+        padding: 14px;
+    }
+    .kdv-mini-amount {
+        font-size: 0.95rem;
+    }
+    .kdv-table-card {
+        padding: 12px;
+    }
+    /* Hide table on mobile, show cards instead */
+    .kdv-table-card .table-responsive {
+        display: none;
+    }
+    .kdv-mobile-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .kdv-month-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 12px;
+        border-left: 3px solid #dee2e6;
+    }
+    .kdv-month-card.active {
+        border-left-color: #714B67;
+        background: #f3eef2;
+    }
+    .kdv-month-card.empty {
+        opacity: 0.5;
+    }
+    .kdv-month-card-header {
+        font-weight: 600;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .kdv-month-card-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        padding: 2px 0;
+    }
+    .kdv-month-card-row .label {
+        color: #666;
+    }
+}
+
+/* Desktop: hide mobile cards */
+@media (min-width: 768px) {
+    .kdv-mobile-cards {
+        display: none;
+    }
+}
