@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <template id="portal_invoice_earsiv_button"
+    <template id="portal_invoice_gib_button"
               inherit_id="account.portal_invoice_page"
-              name="E-Arsiv PDF Download Button">
-        <!-- Change layout to vertical -->
+              name="GIB e-Arsiv PDF Download Button">
         <xpath expr="//div[hasclass('o_download_pdf')]" position="replace">
             <div class="o_download_pdf d-flex flex-column gap-2">
                 <a class="btn btn-light o_download_btn w-100"
@@ -11,7 +10,7 @@
                    title="Proforma Indir" role="button">
                     <i class="fa fa-download"/> Proforma Indir
                 </a>
-                <t t-if="invoice.earsiv_pdf">
+                <t t-if="invoice.gib_pdf_id">
                     <a class="btn btn-primary w-100"
                        t-attf-href="/my/invoices/#{invoice.id}/earsiv"
                        title="Fatura Indir" role="button">
