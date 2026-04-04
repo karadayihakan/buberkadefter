@@ -14,6 +14,12 @@
                         class="btn-primary"
                         invisible="not gib_can_send"
                         confirm="Fatura GIB e-Arsiv portalina gonderilecek. Devam etmek istiyor musunuz?"/>
+                <button name="action_match_from_gib"
+                        type="object"
+                        string="GIB'den Eslestir"
+                        class="btn-secondary"
+                        invisible="not gib_can_send"
+                        confirm="GIB portalindan fatura eslestirilecek. Devam?"/>
             </xpath>
             <!-- GIB fields after ref -->
             <xpath expr="//field[@name='ref']" position="after">

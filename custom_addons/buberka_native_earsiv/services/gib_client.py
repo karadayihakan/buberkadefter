@@ -200,6 +200,40 @@ class GIBClient:
             _logger.error(msg)
             return GIBResult(success=False, error_msg=msg)
 
+    def fetch_invoices(self, start_date, end_date):
+        """GIB portalindan fatura listesini cek.
+        Returns: GIBResult with uuid = list of invoice dicts or error.
+        """
+        if not self._portal:
+            return GIBResult(success=False, error_msg='GIB portalina giris yapilmamis.')
+        try:
+            invoices = self._portal.faturalari_getir(
+                start_date.strftime('%d/%m/%Y'),
+                end_date.strftime('%d/%m/%Y'),
+            )
+            _logger.info('GIB portalindan %s fatura cekildi.', len(invoices) if invoices else 0)
+            return GIBResult(success=True, uuid=invoices or [])
+        except Exception as e:
+            error_str = str(e)
+            if 'JDBC' in error_str or '500' in error_str or 'Timeout' in error_str:
+                msg = 'GIB sunucu hatasi: %s' % error_str
+            else:
+                msg = 'GIB fatura listesi cekilemedi: %s' % error_str
+            _logger.error(msg)
+            return GIBResult(success=False, error_msg=msg)
+
+    def download_html(self, uuid):
+        """GIB portalindan fatura HTML indir."""
+        if not self._portal:
+            return None
+        try:
+            html = self._portal.fatura_html(uuid)
+            if html:
+                return html.encode('utf-8') if isinstance(html, str) else html
+        except Exception as e:
+            _logger.warning('GIB HTML indirme hatasi: %s', e)
+        return None
+
     def logout(self):
         """GIB portalindan cikis yap."""
         if self._portal:
