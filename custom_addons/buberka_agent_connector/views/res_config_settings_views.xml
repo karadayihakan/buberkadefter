@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_buberka_agent" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.buberka.agent</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="BuberkaSmart Agent" name="buberka_agent_connector"
+                     logo="/buberka_agent_connector/static/description/icon.png">
+                    <block title="BuberkaSmart AI Veri Ajani"
+                           name="buberka_agent_baglanti">
+                        <setting string="Baglanti Anahtari"
+                                 help="BuberkaSmart panelinizden kopyaladiginiz gizli anahtari buraya yapistirin. Salt-okuma; disari gitmez.">
+                            <field name="buberka_agent_secret" password="True"
+                                   placeholder="BuberkaSmart panelinden kopyalayin"/>
+                        </setting>
+                        <setting string="Tenant Kodu"
+                                 help="BuberkaSmart'taki tenant kodunuz (orn. buberka).">
+                            <field name="buberka_agent_tenant"
+                                   placeholder="buberka"/>
+                        </setting>
+                        <setting string="Agent Baglantisi Aktif"
+                                 help="Kapatilirsa ajan uclari istekleri reddeder.">
+                            <field name="buberka_agent_aktif"/>
+                        </setting>
+                        <div class="text-muted mt16">
+                            Uclar: <code>/agent/v1/saglik</code>,
+                            <code>/agent/v1/manifest</code>,
+                            <code>/agent/v1/tools/&lt;ad&gt;</code>.
+                            Tumu HMAC imzali ve SALT-OKUMA'dir — hicbir sey yazmaz/silmez.
+                        </div>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>
