@@ -24,6 +24,10 @@
                                  help="Kapatilirsa ajan uclari istekleri reddeder.">
                             <field name="buberka_agent_aktif"/>
                         </setting>
+                        <setting string="Odoo Icinde Sohbet Widget'ini Goster"
+                                 help="Kapatirsaniz baglanti acik kalir ama Odoo ici sohbet balonu gorunmez (orn. yalniz PWA/mobil uygulamadan kullaniyorsaniz).">
+                            <field name="buberka_agent_widget_goster"/>
+                        </setting>
                         <div class="text-muted mt16">
                             Uclar: <code>/agent/v1/saglik</code>,
                             <code>/agent/v1/manifest</code>,

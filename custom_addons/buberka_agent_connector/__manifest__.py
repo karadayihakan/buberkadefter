@@ -26,6 +26,11 @@ Uclar: /agent/v1/saglik, /agent/v1/manifest, /agent/v1/tools/<ad>
     'data': [
         'views/res_config_settings_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'buberka_agent_connector/static/src/js/buberka_widget.js',
+        ],
+    },
     'images': ['static/description/banner.png'],
     'installable': True,
     'application': True,

@@ -13,10 +13,12 @@ Imza (sozlesme §3) BuberkaSmart agent/crypto.py ile BIREBIR AYNI:
 Secret Odoo ir.config_parameter'da tutulur (anahtar: buberka_agent.secret).
 Bu addon HICBIR SEY YAZMAZ/SILMEZ — yalniz read/search_read.
 """
+import base64
 import hashlib
 import hmac
 import json
 import logging
+import secrets
 import time
 
 from odoo import http
@@ -133,6 +135,42 @@ def _obo_coz():
 
 
 # ---------------------------------------------------------------------------
+# Odoo-ici sohbet widget'i icin JETON uretimi (BuberkaSmart widget_token ile birebir).
+# Bicim: base64url(JSON{exp,iat,jti,kanal:'widget',kullanici,rol,tenant}) + '.' +
+#        hex(HMAC_SHA256(secret, 'widget-jeton\n' + base64url))
+# JSON SIRALI, bosluksuz. Rol: admin|staff|muhasebe|kalite|uretim.
+# ---------------------------------------------------------------------------
+def _b64url(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def _widget_jeton_uret(secret, tenant, kullanici, rol):
+    simdi = int(time.time())
+    payload = {
+        "exp": simdi + 180, "iat": simdi, "jti": secrets.token_hex(12),
+        "kanal": "widget", "kullanici": kullanici or "", "rol": rol or "staff",
+        "tenant": tenant,
+    }
+    b64 = _b64url(json.dumps(payload, sort_keys=True, separators=(",", ":"),
+                             ensure_ascii=False).encode("utf-8"))
+    sig = hmac.new(secret.encode("utf-8"),
+                   ("widget-jeton\n" + b64).encode("utf-8"),
+                   hashlib.sha256).hexdigest()
+    return b64 + "." + sig
+
+
+def _odoo_rol(env):
+    """Odoo kullanicisini sozlesme rolune esle. Admin -> admin, digerleri -> staff.
+    (Ileride Odoo gruplarina gore muhasebe/kalite/uretim ayrilabilir.)"""
+    try:
+        if env.user.has_group("base.group_system"):
+            return "admin"
+    except Exception:
+        pass
+    return "staff"
+
+
+# ---------------------------------------------------------------------------
 # Manifest — hangi araclari sunuyoruz (BuberkaSmart bunu okur, kod degismez)
 # ---------------------------------------------------------------------------
 def _manifest():
@@ -150,6 +188,32 @@ def _manifest():
                               "aciklama": "En fazla kac kayit (varsayilan 20, azami 100)"},
                     "musteri": {"tip": "metin", "zorunlu": False,
                                 "aciklama": "Musteri adinda gecen metin (opsiyonel filtre)"},
+                },
+            },
+            {
+                "ad": "odenmemis_faturalar",
+                "aciklama": "Odenmemis/kismen odenmis musteri faturalari: musteri, fatura no, "
+                            "tutar, odenecek bakiye, vade tarihi. 'Kimin borcu var, tahsil "
+                            "edilecek ne kadar, vadesi gecen fatura' sorularinda kullan.",
+                "girdi_semasi": {
+                    "limit": {"tip": "sayi", "zorunlu": False,
+                              "aciklama": "En fazla kac kayit (varsayilan 20, azami 100)"},
+                    "musteri": {"tip": "metin", "zorunlu": False,
+                                "aciklama": "Musteri adinda gecen metin (opsiyonel filtre)"},
+                    "yalniz_vadesi_gecen": {"tip": "mantiksal", "zorunlu": False,
+                                "aciklama": "True ise yalniz vadesi gecmis faturalar"},
+                },
+            },
+            {
+                "ad": "kdv_ozeti",
+                "aciklama": "Belirtilen ay icin KDV ozeti: hesaplanan KDV (satis), indirilecek "
+                            "KDV (alis) ve odenecek net KDV. 'Bu ay KDV ne kadar, odenecek "
+                            "vergi' sorularinda kullan.",
+                "girdi_semasi": {
+                    "yil": {"tip": "sayi", "zorunlu": False,
+                            "aciklama": "Yil (varsayilan bu yil)"},
+                    "ay": {"tip": "sayi", "zorunlu": False,
+                           "aciklama": "Ay 1-12 (varsayilan bu ay)"},
                 },
             },
         ],
@@ -199,8 +263,110 @@ def _arac_acik_siparisler(girdi, obo):
     }
 
 
+def _arac_odenmemis_faturalar(girdi, obo):
+    try:
+        limit = int(girdi.get("limit") or 20)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    # Gonderilmis (posted) musteri faturalari, odenmemis/kismen odenmis
+    domain = [
+        ("move_type", "=", "out_invoice"),
+        ("state", "=", "posted"),
+        ("payment_state", "in", ["not_paid", "partial"]),
+    ]
+    musteri = (girdi.get("musteri") or "").strip()
+    if musteri:
+        domain.append(("partner_id.name", "ilike", musteri))
+    if girdi.get("yalniz_vadesi_gecen"):
+        from datetime import date
+        domain.append(("invoice_date_due", "<", date.today().isoformat()))
+
+    Move = request.env["account.move"].sudo()
+    kayitlar = Move.search_read(
+        domain,
+        ["name", "partner_id", "invoice_date", "invoice_date_due",
+         "amount_total", "amount_residual", "currency_id", "payment_state"],
+        limit=limit,
+        order="invoice_date_due asc",
+    )
+    toplam = Move.search_count(domain)
+    toplam_bakiye = sum(r.get("amount_residual") or 0 for r in kayitlar)
+
+    satirlar = []
+    for r in kayitlar:
+        satirlar.append({
+            "fatura_no": r.get("name"),
+            "musteri": (r["partner_id"][1] if r.get("partner_id") else ""),
+            "fatura_tarihi": (r["invoice_date"].strftime("%Y-%m-%d") if r.get("invoice_date") else ""),
+            "vade": (r["invoice_date_due"].strftime("%Y-%m-%d") if r.get("invoice_date_due") else ""),
+            "tutar": r.get("amount_total") or 0.0,
+            "odenecek_bakiye": r.get("amount_residual") or 0.0,
+            "para_birimi": (r["currency_id"][1] if r.get("currency_id") else ""),
+            "durum": r.get("payment_state"),
+        })
+
+    return {
+        "ozet": "%d odenmemis fatura, toplam odenecek bakiye %.2f" % (toplam, toplam_bakiye),
+        "toplam": toplam,
+        "toplam_bakiye": round(toplam_bakiye, 2),
+        "faturalar": satirlar,
+    }
+
+
+def _arac_kdv_ozeti(girdi, obo):
+    from datetime import date
+    bugun = date.today()
+    try:
+        yil = int(girdi.get("yil") or bugun.year)
+    except (TypeError, ValueError):
+        yil = bugun.year
+    try:
+        ay = int(girdi.get("ay") or bugun.month)
+    except (TypeError, ValueError):
+        ay = bugun.month
+    ay = max(1, min(ay, 12))
+
+    ay_basi = date(yil, ay, 1)
+    ay_sonu = date(yil + (1 if ay == 12 else 0), 1 if ay == 12 else ay + 1, 1)
+
+    Line = request.env["account.move.line"].sudo()
+    # KDV satirlari = vergi satiri (tax_line_id dolu), gonderilmis faturalarda
+    temel = [
+        ("tax_line_id", "!=", False),
+        ("parent_state", "=", "posted"),
+        ("date", ">=", ay_basi.isoformat()),
+        ("date", "<", ay_sonu.isoformat()),
+    ]
+    # Satis (hesaplanan KDV) = out_invoice/out_refund ; Alis (indirilecek) = in_invoice/in_refund
+    satis = Line.search_read(
+        temel + [("move_id.move_type", "in", ["out_invoice", "out_refund"])],
+        ["balance"],
+    )
+    alis = Line.search_read(
+        temel + [("move_id.move_type", "in", ["in_invoice", "in_refund"])],
+        ["balance"],
+    )
+    # Satis KDV'si alacak (negatif balance) -> isareti cevir; alis KDV'si borc (pozitif)
+    hesaplanan = round(-sum(l.get("balance") or 0 for l in satis), 2)
+    indirilecek = round(sum(l.get("balance") or 0 for l in alis), 2)
+    odenecek = round(hesaplanan - indirilecek, 2)
+
+    return {
+        "ozet": "%04d-%02d KDV: hesaplanan %.2f, indirilecek %.2f, odenecek net %.2f" % (
+            yil, ay, hesaplanan, indirilecek, odenecek),
+        "donem": "%04d-%02d" % (yil, ay),
+        "hesaplanan_kdv": hesaplanan,
+        "indirilecek_kdv": indirilecek,
+        "odenecek_net_kdv": odenecek,
+    }
+
+
 _ARACLAR = {
     "acik_siparisler": _arac_acik_siparisler,
+    "odenmemis_faturalar": _arac_odenmemis_faturalar,
+    "kdv_ozeti": _arac_kdv_ozeti,
 }
 
 
@@ -253,3 +419,31 @@ class BuberkaAgentController(http.Controller):
                          "hata": "%s: %s" % (type(e).__name__, str(e))}, status=200)
 
         return _json({"ok": True, "sonuc": sonuc})
+
+    # -----------------------------------------------------------------------
+    # Odoo-ICI sohbet widget'i icin durum ucu (auth=user — oturum acik Odoo
+    # kullanicisi). Giris yapmis kullanici icin kisa omurlu jeton uretir; JS bunu
+    # BuberkaSmart iframe'ine postMessage ile verir. 'goster' kapaliysa JS hicbir
+    # sey basmaz. Bu sayede her Odoo musterisinde addon kurulu + ayar acik olunca
+    # widget otomatik calisir — ayri kod gerekmez.
+    # -----------------------------------------------------------------------
+    @http.route("/agent/v1/widget-durum", type="json", auth="user")
+    def widget_durum(self, **kw):
+        ICP = request.env["ir.config_parameter"].sudo()
+        goster = str(ICP.get_param("buberka_agent.widget_goster", "True")).lower() not in ("false", "0", "")
+        aktif = str(ICP.get_param("buberka_agent.aktif", "True")).lower() not in ("false", "0", "")
+        tenant = ICP.get_param("buberka_agent.tenant", "")
+        secret = ICP.get_param("buberka_agent.secret", "")
+        merkez = ICP.get_param("buberka_agent.merkez_url", "https://buberkasmart.com").rstrip("/")
+        if not (goster and aktif and tenant and secret):
+            return {"goster": False}
+        rol = _odoo_rol(request.env)
+        kullanici = request.env.user.login or request.env.user.name or "odoo"
+        jeton = _widget_jeton_uret(secret, tenant, kullanici, rol)
+        return {
+            "goster": True,
+            "iframe_url": "%s/w/%s" % (merkez, tenant),
+            "merkez_koken": merkez,
+            "jeton": jeton,
+            "sure_sn": 180,
+        }

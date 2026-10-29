@@ -30,6 +30,14 @@ class ResConfigSettings(models.TransientModel):
         config_parameter="buberka_agent.aktif",
         default=True,
     )
+    buberka_agent_widget_goster = fields.Boolean(
+        string="Odoo Icinde Sohbet Widget'ini Goster",
+        help="Acikken Odoo ekranlarinda sag altta sohbet balonu cikar. "
+             "Kapatirsaniz baglanti acik kalir ama Odoo ici widget gorunmez "
+             "(orn. yalniz PWA/mobil uygulamadan kullaniyorsaniz).",
+        config_parameter="buberka_agent.widget_goster",
+        default=True,
+    )
 
     @api.model
     def buberka_agent_durum(self):
